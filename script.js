@@ -5,6 +5,10 @@ const twitterBtn = document.querySelector("#twitter");
 const newQuoteBtn = document.querySelector("#new-quote");
 const loader = document.querySelector("#loader");
 
+// Array with quotes we fetch from the API
+let apiQuotes = [];
+let errorCounter = 0;
+
 function showLoadingSpinner() {
   loader.hidden = false;
   quoteContainer.hidden = true;
@@ -17,40 +21,44 @@ function hideLoadingSpinner() {
   }
 }
 
-async function getQuote() {
-  let errorCounter = 0;
+// Picks a random quote from apiQuotes array and inserting into the DOM
+function newQuote() {
   showLoadingSpinner();
-  const proxyUrl = "https://cors-anywhere.herokuapp.com/";
-  const apiUrl =
-    "http://api.forismatic.com/api/1.0/?method=getQuote&lang=en&format=json";
+  const quote = apiQuotes[Math.floor(Math.random() * apiQuotes.length)];
+
+  !quote.author
+    ? (authorText.innerText = "Unknown")
+    : (authorText.innerText = quote.author);
+
+  quote.text.length > 120
+    ? quoteText.classList.add("long-quote")
+    : quoteText.classList.remove("long-quote");
+
+  quoteText.innerText = quote.text;
+  hideLoadingSpinner();
+}
+
+// Fectching quotes from the API and inserting to the DOM
+async function getQuotes() {
+  showLoadingSpinner();
+  const apiUrl = "https://type.fit/api/quotes";
 
   try {
-    const response = await fetch(proxyUrl + apiUrl);
-    const data = await response.json();
-
-    if (data.quoteAuthor === "") {
-      authorText.innerText = "Unknown";
-    } else {
-      authorText.innerText = data.quoteAuthor;
-    }
-
-    if (data.quoteText.length > 120) {
-      quoteText.classList.add("long-quote");
-    } else {
-      quoteText.classList.remove("long-quote");
-    }
-    quoteText.innerText = data.quoteText;
+    const response = await fetch(apiUrl);
+    apiQuotes = await response.json();
+    newQuote();
     hideLoadingSpinner();
   } catch (error) {
-    if (errorCounter < 10) {
-      getQuote();
-      errorCounter++;
-    } else {
-      console.error(`Error: ${error}`);
-    }
+    errorCounter < 10
+      ? (getQuotes(), errorCounter++, console.log(errorCounter))
+      : (console.error(`Error: ${error}`),
+        hideLoadingSpinner(),
+        (quoteText.innerText = `Error: ${error}`),
+        (authorText.innerText = ""));
   }
 }
 
+// Twitter button
 function tweetQuote() {
   const quote = quoteText.innerText;
   const author = authorText.innerText;
@@ -59,8 +67,8 @@ function tweetQuote() {
 }
 
 // Event Listeners
-newQuoteBtn.addEventListener("click", getQuote);
+newQuoteBtn.addEventListener("click", newQuote);
 twitterBtn.addEventListener("click", tweetQuote);
 
 // On load
-getQuote();
+getQuotes();
